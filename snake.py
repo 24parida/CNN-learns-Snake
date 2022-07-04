@@ -1,129 +1,178 @@
-import pygame
-import sys
+# ************************************
+# Python Snake
+# ************************************
+from tkinter import *
 import random
 
-class Snake():
+GAME_WIDTH = 700
+GAME_HEIGHT = 700
+SPEED = 50
+SPACE_SIZE = 50
+BODY_PARTS = 3
+SNAKE_COLOR = "#00FF00"
+FOOD_COLOR = "#FF0000"
+BACKGROUND_COLOR = "#000000"
+
+
+class Snake:
+
     def __init__(self):
-        self.length = 1
-        self.positions = [((screen_width/2), (screen_height/2))]
-        self.direction = random.choice([up, down, left, right])
-        self.color = (17, 24, 47)
-        # Special thanks to YouTubers Mini - Cafetos and Knivens Beast for raising this issue!
-        # Code adjustment courtesy of YouTuber Elija de Hoog
-        self.score = 0
+        self.body_size = BODY_PARTS
+        self.coordinates = []
+        self.squares = []
 
-    def get_head_position(self):
-        return self.positions[0]
+        for i in range(0, BODY_PARTS):
+            self.coordinates.append([0, 0])
 
-    def turn(self, point):
-        if self.length > 1 and (point[0]*-1, point[1]*-1) == self.direction:
-            return
-        else:
-            self.direction = point
+        for x, y in self.coordinates:
+            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill = BACKGROUND_COLOR, tag="snake")
+            self.squares.append(square)
 
-    def move(self):
-        cur = self.get_head_position()
-        x,y = self.direction
-        new = (((cur[0]+(x*gridsize))%screen_width), (cur[1]+(y*gridsize))%screen_height)
-        if len(self.positions) > 2 and new in self.positions[2:]:
-            self.reset()
-        else:
-            self.positions.insert(0,new)
-            if len(self.positions) > self.length:
-                self.positions.pop()
+    def getBody(self):
+        return self.cordinates
 
-    def reset(self):
-        self.length = 1
-        self.positions = [((screen_width/2), (screen_height/2))]
-        self.direction = random.choice([up, down, left, right])
-        self.score = 0
 
-    def draw(self,surface):
-        for p in self.positions:
-            r = pygame.Rect((p[0], p[1]), (gridsize,gridsize))
-            pygame.draw.rect(surface, self.color, r)
-            pygame.draw.rect(surface, (93,216, 228), r, 1)
+class Food:
 
-    def handle_keys(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
-                    self.turn(up)
-                elif event.key == pygame.K_DOWN:
-                    self.turn(down)
-                elif event.key == pygame.K_LEFT:
-                    self.turn(left)
-                elif event.key == pygame.K_RIGHT:
-                    self.turn(right)
-
-class Food():
     def __init__(self):
-        self.position = (0,0)
-        self.color = (223, 163, 49)
-        self.randomize_position()
+        x = random.randint(0, (GAME_WIDTH / SPACE_SIZE) - 1) * SPACE_SIZE
+        y = random.randint(0, (GAME_HEIGHT / SPACE_SIZE) - 1) * SPACE_SIZE
 
-    def randomize_position(self):
-        self.position = (random.randint(0, grid_width-1)*gridsize, random.randint(0, grid_height-1)*gridsize)
+        self.coordinates = [x, y]
 
-    def draw(self, surface):
-        r = pygame.Rect((self.position[0], self.position[1]), (gridsize, gridsize))
-        pygame.draw.rect(surface, self.color, r)
-        pygame.draw.rect(surface, (93, 216, 228), r, 1)
+        canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=FOOD_COLOR, tag="food")
 
-def drawGrid(surface):
-    for y in range(0, int(grid_height)):
-        for x in range(0, int(grid_width)):
-            if (x+y)%2 == 0:
-                r = pygame.Rect((x*gridsize, y*gridsize), (gridsize,gridsize))
-                pygame.draw.rect(surface,(93,216,228), r)
-            else:
-                rr = pygame.Rect((x*gridsize, y*gridsize), (gridsize,gridsize))
-                pygame.draw.rect(surface, (84,194,205), rr)
 
-screen_width = 480
-screen_height = 480
+def next_turn(snake, food, draw):
+    x, y = snake.coordinates[0]
 
-gridsize = 20
-grid_width = screen_width/gridsize
-grid_height = screen_height/gridsize
+    if direction == "up":
+        y -= SPACE_SIZE
+    elif direction == "down":
+        y += SPACE_SIZE
+    elif direction == "left":
+        x -= SPACE_SIZE
+    elif direction == "right":
+        x += SPACE_SIZE
 
-up = (0,-1)
-down = (0,1)
-left = (-1,0)
-right = (1,0)
+    snake.coordinates.insert(0, (x, y))
+    if draw == True:
+        square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR)
+    else:
+        square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR)
 
-def main():
-    pygame.init()
+    snake.squares.insert(0, square)
 
-    clock = pygame.time.Clock()
-    screen = pygame.display.set_mode((screen_width, screen_height), 0, 32)
+    if x == food.coordinates[0] and y == food.coordinates[1]:
 
-    surface = pygame.Surface(screen.get_size())
-    surface = surface.convert()
-    drawGrid(surface)
+        global score
 
-    snake = Snake()
-    food = Food()
+        score += 1
 
-    myfont = pygame.font.SysFont("monospace",16)
+        label.config(text="Score:{}".format(score))
 
-    while (True):
-        clock.tick(10)
-        snake.handle_keys()
-        drawGrid(surface)
-        snake.move()
-        if snake.get_head_position() == food.position:
-            snake.length += 1
-            snake.score += 1
-            food.randomize_position()
-        snake.draw(surface)
-        food.draw(surface)
-        screen.blit(surface, (0,0))
-        text = myfont.render("Score {0}".format(snake.score), 1, (0,0,0))
-        screen.blit(text, (5,10))
-        pygame.display.update()
+        canvas.delete("food")
 
-main()
+        food = Food()
+
+    else:
+
+        del snake.coordinates[-1]
+
+        canvas.delete(snake.squares[-1])
+
+        del snake.squares[-1]
+
+    if check_collisions(snake):
+        game_over()
+
+    else:
+        window.after(SPEED, next_turn, snake, food, draw)
+
+
+def change_direction(new_direction):
+    global direction
+
+    if new_direction == 'left':
+        if direction != 'right':
+            direction = new_direction
+    elif new_direction == 'right':
+        if direction != 'left':
+            direction = new_direction
+    elif new_direction == 'up':
+        if direction != 'down':
+            direction = new_direction
+    elif new_direction == 'down':
+        if direction != 'up':
+            direction = new_direction
+
+
+def check_collisions(snake):
+    x, y = snake.coordinates[0]
+
+    if x < 0 or x >= GAME_WIDTH:
+        return True
+    elif y < 0 or y >= GAME_HEIGHT:
+        return True
+
+    for body_part in snake.coordinates[1:]:
+        if x == body_part[0] and y == body_part[1]:
+            return True
+
+    return False
+
+
+def game_over():
+    canvas.delete(ALL)
+    canvas.create_text(canvas.winfo_width() / 2, canvas.winfo_height() / 2,
+                       font=('consolas', 70), text="GAME OVER", fill="red", tag="gameover")
+
+
+window = Tk()
+window.title("Snake game")
+window.resizable(False, False)
+
+score = 0
+direction = 'down'
+
+label = Label(window, text="Score:{}".format(score), font=('consolas', 40))
+label.pack()
+
+canvas = Canvas(window, bg=BACKGROUND_COLOR, height=GAME_HEIGHT, width=GAME_WIDTH)
+canvas.pack()
+
+window.update()
+
+window_width = window.winfo_width()
+window_height = window.winfo_height()
+screen_width = window.winfo_screenwidth()
+screen_height = window.winfo_screenheight()
+
+x = int((screen_width / 2) - (window_width / 2))
+y = int((screen_height / 2) - (window_height / 2))
+
+window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
+window.bind('<Left>', lambda event: change_direction('left'))
+window.bind('<Right>', lambda event: change_direction('right'))
+window.bind('<Up>', lambda event: change_direction('up'))
+window.bind('<Down>', lambda event: change_direction('down'))
+
+#const outputs=NeuralNetwork.feedForward(offsets,this.brain);
+# this.controls.forward=outputs[0];
+# this.controls.left=outputs[1];
+# this.controls.right=outputs[2];
+# this.controls.reverse=outputs[3];
+
+snake = Snake()
+# snake2 = Snake()
+# snake3 = Snake()
+# snake4 = Snake()
+# snake5 = Snake()
+
+
+food = Food()
+
+next_turn(snake, food, False)
+
+window.mainloop()
