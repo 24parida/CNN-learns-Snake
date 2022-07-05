@@ -159,7 +159,7 @@ def initialize_models():
 
 class Snake:
 
-    def __init__(self):
+    def __init__(self, num):
         self.body_size = BODY_PARTS
         self.coordinates = []
         self.squares = []
@@ -168,11 +168,40 @@ class Snake:
             self.coordinates.append([0, 0])
 
         for x, y in self.coordinates:
-            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR, tag="snake")
+            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR, tag="snake"+num)
             self.squares.append(square)
 
     def getBody(self):
         return self.cordinates
+
+    def restart(self, num):
+        global BODY_PARTS
+        global direction
+        global direction2
+
+        direction = 'down'
+        direction2 = 'down'
+
+        self.body_size = BODY_PARTS
+        self.coordinates.clear()
+        self.squares.clear()
+        print(self.coordinates)
+        print(self.squares)
+        for i in range(0, BODY_PARTS):
+            self.coordinates.append([0, 0])
+        print("updated")
+        print(self.coordinates)
+        for x, y in self.coordinates:
+            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR, tag="snake"+num)
+            self.squares.append(square)
+        print(self.squares)
+
+
+
+    def clean(self):
+        for x, y in self.coordinates:
+            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR)
+
 
 
 class Food:
@@ -186,6 +215,7 @@ class Food:
 
 
 def next_turn(snake, food, draw, WASD, num):
+
     x, y = snake.coordinates[0]
     if WASD:
         if direction2 == "up":
@@ -207,7 +237,7 @@ def next_turn(snake, food, draw, WASD, num):
             x += SPACE_SIZE
 
     snake.coordinates.insert(0, (x, y))
-    if draw == True:
+    if draw:
         square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR)
     else:
         square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR)
@@ -217,9 +247,14 @@ def next_turn(snake, food, draw, WASD, num):
     if x == food.coordinates[0] and y == food.coordinates[1]:
 
         global score
-
-        score += 1
+        global score2
+        if num == '1':
+            score += 1
+        if num == '2':
+            score2 += 1
         label.config(text="Score:{}".format(score))
+        label2.config(text="Score2:{}".format(score2))
+
 
         canvas.delete("food" + num)
 
@@ -232,12 +267,12 @@ def next_turn(snake, food, draw, WASD, num):
         canvas.delete(snake.squares[-1])
 
         del snake.squares[-1]
-
     if check_collisions(snake):
         game_over()
 
-    else:
-        window.after(SPEED, next_turn, snake, food, draw, WASD, num)
+    window.after(SPEED, next_turn, snake, food, draw, WASD, num)
+
+
 
 
 def change_direction(new_direction, WASD):
@@ -288,8 +323,22 @@ def check_collisions(snake):
 
 
 def game_over():
-    canvas.delete(ALL)
-    canvas.create_text(canvas.winfo_width() / 2, canvas.winfo_height() / 2, font=('consolas', 70), text="GAME OVER", fill="red", tag="gameover")
+    snake.clean()
+    snake2.clean()
+    canvas.delete('snake1')
+    canvas.delete('snake2')
+
+    # canvas.delete(ALL)
+    #
+    # canvas.delete('food1')
+    # canvas.delete('food2')
+
+    snake.restart('1')
+    snake2.restart('2')
+
+
+
+    # canvas.create_text(canvas.winfo_width() / 2, canvas.winfo_height() / 2, font=('consolas', 70), text="GAME OVER", fill="red", tag="gameover")
 
 
 window = Tk()
@@ -298,10 +347,13 @@ window.resizable(False, False)
 
 #score
 score = 0
+score2 = 0
 direction = 'down'
 direction2 = 'down'
 
-label = Label(window, text="Score:{}".format(score), font=('consolas', 40))
+label = Label(window, text="Score:{}".format(score), font=('consolas', 10))
+label2 = Label(window, text="Score2:{}".format(score2), font=('consolas', 50))
+label2.pack()
 label.pack()
 
 canvas = Canvas(window, bg=BACKGROUND_COLOR, height=GAME_HEIGHT, width=GAME_WIDTH)
@@ -335,8 +387,10 @@ window.bind('<s>', lambda event: change_direction('down', True))
 # this.controls.right=outputs[2];
 # this.controls.reverse=outputs[3];
 
-snake = Snake()
-snake2 = Snake()
+snake = Snake('1')
+snake2 = Snake('2')
+# snake3 = Snake('3')
+
 # snake3 = Snake()
 # snake4 = Snake()
 # snake5 = Snake()
@@ -344,8 +398,11 @@ snake2 = Snake()
 
 food1 = Food('1')
 food2 = Food('2')
+# food3 = Food('3')
 
 next_turn(snake, food1, True, False, '1')
 next_turn(snake2, food2, True, True, '2')
+# next_turn(snake3, food3, True, True, '3')
+
 
 window.mainloop()
