@@ -16,6 +16,9 @@ SNAKE_COLOR = "#00FF00"
 FOOD_COLOR = "#FF0000"
 BACKGROUND_COLOR = "#000000"
 
+# generation
+lives = [True, True]
+
 # machine learning
 current_pool = []
 fitness = []
@@ -168,7 +171,7 @@ class Snake:
             self.coordinates.append([0, 0])
 
         for x, y in self.coordinates:
-            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR, tag="snake"+num)
+            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR, tag="snake"+str(num))
             self.squares.append(square)
 
     def getBody(self):
@@ -192,7 +195,7 @@ class Snake:
         print("updated")
         print(self.coordinates)
         for x, y in self.coordinates:
-            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR, tag="snake"+num)
+            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR, tag="snake"+str(num))
             self.squares.append(square)
         print(self.squares)
 
@@ -211,10 +214,23 @@ class Food:
 
         self.coordinates = [x, y]
 
-        canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=FOOD_COLOR, tag="food"+num)
+        canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=FOOD_COLOR, tag="food"+str(num))
+
+    def restart(self, num):
+        # x = self.coordinates[0]
+        # y = self.coordinates[1]
+        # canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR)
+
+        x = random.randint(0, (GAME_WIDTH / SPACE_SIZE) - 1) * SPACE_SIZE
+
+        y = random.randint(0, (GAME_HEIGHT / SPACE_SIZE) - 1) * SPACE_SIZE
+        self.coordinates = [x, y]
+
+        canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=FOOD_COLOR, tag="food" + str(num))
 
 
 def next_turn(snake, food, draw, WASD, num):
+    global lives
 
     x, y = snake.coordinates[0]
     if WASD:
@@ -256,7 +272,7 @@ def next_turn(snake, food, draw, WASD, num):
         label2.config(text="Score2:{}".format(score2))
 
 
-        canvas.delete("food" + num)
+        canvas.delete("food" + str(num))
 
         food = Food(num)
 
@@ -268,7 +284,15 @@ def next_turn(snake, food, draw, WASD, num):
 
         del snake.squares[-1]
     if check_collisions(snake):
-        game_over()
+        lives[num-1] = False
+        snakes_still_alive = False
+        for life in lives:
+            if life == True:
+                snakes_still_alive = True
+        if snakes_still_alive:
+            game_over_bnr(num)
+        else:
+            game_over()
 
     window.after(SPEED, next_turn, snake, food, draw, WASD, num)
 
@@ -327,19 +351,24 @@ def game_over():
     snake2.clean()
     canvas.delete('snake1')
     canvas.delete('snake2')
+    canvas.delete('food1')
+    canvas.delete('food2')
 
-    # canvas.delete(ALL)
-    #
-    # canvas.delete('food1')
-    # canvas.delete('food2')
+    snake.restart(1)
+    snake2.restart(2)
+    food1.restart(1)
+    food2.restart(2)
 
-    snake.restart('1')
-    snake2.restart('2')
+def game_over_bnr(num):
+    if num == 1:
+        snake.clean()
+        canvas.delete('snake1')
+        canvas.delete('food1')
 
-
-
-    # canvas.create_text(canvas.winfo_width() / 2, canvas.winfo_height() / 2, font=('consolas', 70), text="GAME OVER", fill="red", tag="gameover")
-
+    else:
+        snake2.clean()
+        canvas.delete('snake2')
+        canvas.delete('food2')
 
 window = Tk()
 window.title("Snake game")
@@ -387,8 +416,8 @@ window.bind('<s>', lambda event: change_direction('down', True))
 # this.controls.right=outputs[2];
 # this.controls.reverse=outputs[3];
 
-snake = Snake('1')
-snake2 = Snake('2')
+snake = Snake(1)
+snake2 = Snake(2)
 # snake3 = Snake('3')
 
 # snake3 = Snake()
@@ -396,12 +425,12 @@ snake2 = Snake('2')
 # snake5 = Snake()
 
 
-food1 = Food('1')
-food2 = Food('2')
+food1 = Food(1)
+food2 = Food(2)
 # food3 = Food('3')
 
-next_turn(snake, food1, True, False, '1')
-next_turn(snake2, food2, True, True, '2')
+next_turn(snake, food1, True, False, 1)
+next_turn(snake2, food2, True, True, 2)
 # next_turn(snake3, food3, True, True, '3')
 
 
