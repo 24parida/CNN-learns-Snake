@@ -31,6 +31,7 @@ total_models = 10
 
 generation = 1
 highest_fitness = 0
+hf_index = 0
 highest_score = -1
 best_weights = []
 
@@ -147,6 +148,7 @@ def showGameOverScreen():
     total_fitness = 0
 
     global highest_fitness
+    global hf_index
     global best_weights
     updated = False
 
@@ -154,9 +156,10 @@ def showGameOverScreen():
     for select in range(total_models):
         total_fitness += fitness[select]
 
-        if fitness[select] >= highest_fitness:
+        if fitness[select] > highest_fitness:
             updated = True
             highest_fitness = fitness[select]
+            hf_index = select
             best_weights = current_pool[select].get_weights()
 
     # get top two parents
@@ -210,7 +213,7 @@ def initialize_game():
         lives.append(True)
         snake = Snake(i)
         snakes.append(snake)
-        if i == highest_fitness:
+        if i == hf_index:
             food = Food(i, True)
         else:
             food = Food(i, False)
@@ -222,7 +225,7 @@ def initialize_game():
 
 def next_turns():
     for i in range(total_models):
-        if i == highest_fitness:
+        if i == hf_index:
             next_turn(snakes[i], food_s[i], True, i)
 
         else:
@@ -298,7 +301,9 @@ class Food:
 
 def next_turn(snake, food, draw, num):
     global lives
-    global highest_score
+    global highest_fitness
+    global hf_index
+
     x, y = snake.coordinates[0]
 
     action = predict_action(num)
@@ -335,9 +340,9 @@ def next_turn(snake, food, draw, num):
     if x == food.coordinates[0] and y == food.coordinates[1]:
 
         fitness[num] += 1
-        for score in fitness:
-            if score > highest_fitness:
-                highest_fitness = score
+        if fitness[num] > highest_fitness:
+            highest_fitness = fitness[num]
+            hf_index = num
         label.config(text="High Score:{}".format(highest_fitness))
 
         canvas.delete("food" + str(num))
@@ -397,13 +402,14 @@ def check_collisions(snake):
 
 
 def game_over():
+    global hf_index
     for i in range(total_models):
         snakes[i].clean()
         canvas.delete("snake" + str(i))
         canvas.delete("food" + str(i))
     for i in range(total_models):
         snakes[i].restart(i)
-        if i == highest_fitness:
+        if i == hf_index:
             food_s[i].restart(i, True)
         else:
             food_s[i].restart(i, True)
