@@ -42,6 +42,9 @@ OUTPUT_LAYER = 4;
 
 class Food:
     def __init__(self, num, draw):
+        if num == 0:
+            print("RANDOMIZED")
+            print("RANDOMIZED")
         x = random.randint(0, (GAME_WIDTH / SPACE_SIZE) - 1) * SPACE_SIZE
         y = random.randint(0, (GAME_HEIGHT / SPACE_SIZE) - 1) * SPACE_SIZE
 
@@ -355,7 +358,7 @@ def next_turn(snake, food, draw, num):
         label.config(text="High Score:{}".format(highest_fitness))
 
         canvas.delete("food" + str(num))
-        food = Food(num, draw)
+        food.restart(num, draw)
 
     else:
 
