@@ -1,15 +1,16 @@
 # ************************************
 # Python Snake
 # ************************************
-from tkinter import *
 import random
+from tkinter import *
+
 import numpy as np
-from keras.models import Sequential
 from keras.layers import Dense, Activation
+from keras.models import Sequential
 
 GAME_WIDTH = 700
 GAME_HEIGHT = 700
-SPEED = 500
+SPEED = 50
 SPACE_SIZE = 50
 BODY_PARTS = 3
 SNAKE_COLOR = "#00FF00"
@@ -17,7 +18,11 @@ FOOD_COLOR = "#FF0000"
 BACKGROUND_COLOR = "#000000"
 
 # generation
-lives = [True, True]
+lives = []
+snakes = []
+food_s = []
+directions = []
+positions = [0] * 199
 
 # machine learning
 current_pool = []
@@ -25,12 +30,13 @@ fitness = []
 total_models = 10
 
 generation = 1
-highest_fitness = -1
+highest_fitness = 0
+highest_score = -1
 best_weights = []
 
-INPUT_LAYER = 1;
-SECOND_LAYER = 1;
-OUTPUT_LAYER = 1;
+INPUT_LAYER = 199;
+SECOND_LAYER = 50;
+OUTPUT_LAYER = 4;
 
 
 def save_pool():
@@ -53,21 +59,56 @@ def create_model():
     return model
 
 
-def predict_action(positions, model_num):
+def predict_action(model_num):
     global current_pool
+    global positions
 
-    # TODO
-    # map positions into a 1d array
+    for x,y in snakes[model_num].coordinates:
+        print("a")
+        rx = x/50
+        ry = y/50
+        print(str(rx) + "rx")
+        print(str(ry) + "ry")
+        print((14*rx) + ry)
+        positions[int((14*rx) + ry)] = 0.5
+
+    x = food_s[model_num].coordinates[0]
+    y = food_s[model_num].coordinates[1]
+    rx = x/50
+    ry = y/50
+
+    if directions[model_num] == 'down':
+        positions[196] = -1
+    elif directions[model_num] == 'up':
+        positions[196] = 1
+    elif directions[model_num] == 'right':
+        positions[196] = 0.5
+    elif directions[model_num] == 'left':
+        positions[196] = -0.5
+
+    positions[197] = int(rx)
+    positions[198] = int(ry)
+
     neural_input = np.asarray(positions)
     neural_input = np.atleast_2d(neural_input)
 
     # TODO
     # do multiple outputs since we are working with a output layer of size 4
-    output_prob = current_pool[model_num].predict(neural_input, 1)[0]
+    output_prob = current_pool[model_num].predict(neural_input)
+    print("output_prob" + str(output_prob))
 
-    if output_prob[0] <= .5:
-        return 1
-    return 2
+    final_prob = [0, 0, 0, 0]
+
+    if output_prob[0][0] >= .5:
+        final_prob[0] = 1
+    if output_prob[0][1] >= .5:
+        final_prob[1] = 1
+    if output_prob[0][2] >= .5:
+        final_prob[2] = 1
+    if output_prob[0][3] >= 0.5:
+        final_prob[3] = 1
+    print(final_prob)
+    return final_prob
 
 
 def model_crossover(parent1, parent2):
@@ -96,8 +137,8 @@ def model_mutate(weights):
 
     return weights
 
-def showGameOverScreen():
 
+def showGameOverScreen():
     global current_pool
     global fitness
     global generation
@@ -119,8 +160,8 @@ def showGameOverScreen():
             best_weights = current_pool[select].get_weights()
 
     # get top two parents
-    parent1 = random.randint(0, total_models-1)
-    parent2 = random.randint(0, total_models-1)
+    parent1 = random.randint(0, total_models - 1)
+    parent2 = random.randint(0, total_models - 1)
 
     for i in range(total_models):
         if fitness[i] >= fitness[parent1]:
@@ -130,7 +171,6 @@ def showGameOverScreen():
         if j != parent1:
             if fitness[j] > fitness[parent2]:
                 parent2 = j
-
     # getting crossover weights
 
     for select in range(total_models // 2):
@@ -151,13 +191,42 @@ def showGameOverScreen():
         generation += 1
         return
 
+
 def initialize_models():
     global total_models
+    global fitness
     for i in range(total_models):
         model = create_model()
         current_pool.append(model)
         fitness.append(-100)
 
+
+def initialize_game():
+    global lives
+    global snakes
+    global food_s
+
+    for i in range(total_models):
+        lives.append(True)
+        snake = Snake(i)
+        snakes.append(snake)
+        if i == highest_fitness:
+            food = Food(i, True)
+        else:
+            food = Food(i, False)
+        food_s.append(food)
+        fitness.append(0)
+        directions.append('down')
+    # initialize_models()
+
+
+def next_turns():
+    for i in range(total_models):
+        if i == highest_fitness:
+            next_turn(snakes[i], food_s[i], True, i)
+
+        else:
+            next_turn(snakes[i], food_s[i], False, i)
 
 
 class Snake:
@@ -171,86 +240,89 @@ class Snake:
             self.coordinates.append([0, 0])
 
         for x, y in self.coordinates:
-            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR, tag="snake"+str(num))
+            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR,
+                                             tag="snake" + str(num))
             self.squares.append(square)
 
     def getBody(self):
-        return self.cordinates
+        return self.coordinates
 
     def restart(self, num):
         global BODY_PARTS
-        global direction
-        global direction2
-
-        direction = 'down'
-        direction2 = 'down'
+        for i in range(total_models):
+            directions[i] = 'down'
 
         self.body_size = BODY_PARTS
         self.coordinates.clear()
         self.squares.clear()
-        print(self.coordinates)
-        print(self.squares)
+
         for i in range(0, BODY_PARTS):
             self.coordinates.append([0, 0])
-        print("updated")
-        print(self.coordinates)
+
         for x, y in self.coordinates:
-            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR, tag="snake"+str(num))
+            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR,
+                                             tag="snake" + str(num))
             self.squares.append(square)
-        print(self.squares)
-
-
 
     def clean(self):
         for x, y in self.coordinates:
             square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR)
 
 
-
 class Food:
-    def __init__(self, num):
+    def __init__(self, num, draw):
         x = random.randint(0, (GAME_WIDTH / SPACE_SIZE) - 1) * SPACE_SIZE
         y = random.randint(0, (GAME_HEIGHT / SPACE_SIZE) - 1) * SPACE_SIZE
 
         self.coordinates = [x, y]
+        if draw:
+            canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=FOOD_COLOR, tag="food" + str(num))
+        else:
+            canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR, tag="food" + str(num))
 
-        canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=FOOD_COLOR, tag="food"+str(num))
-
-    def restart(self, num):
-        # x = self.coordinates[0]
-        # y = self.coordinates[1]
-        # canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR)
+    def restart(self, num, draw):
 
         x = random.randint(0, (GAME_WIDTH / SPACE_SIZE) - 1) * SPACE_SIZE
 
         y = random.randint(0, (GAME_HEIGHT / SPACE_SIZE) - 1) * SPACE_SIZE
         self.coordinates = [x, y]
 
-        canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=FOOD_COLOR, tag="food" + str(num))
+        if draw:
+            canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=FOOD_COLOR, tag="food" + str(num))
+        else:
+            canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR, tag="food" + str(num))
+
+    def getBody(self):
+        return self.coordinates
 
 
-def next_turn(snake, food, draw, WASD, num):
+def next_turn(snake, food, draw, num):
     global lives
-
+    global highest_score
     x, y = snake.coordinates[0]
-    if WASD:
-        if direction2 == "up":
-            y -= SPACE_SIZE
-        elif direction2 == "down":
-            y += SPACE_SIZE
-        elif direction2 == "left":
-            x -= SPACE_SIZE
-        elif direction2 == "right":
-            x += SPACE_SIZE
-    else:
-        if direction == "up":
-            y -= SPACE_SIZE
-        elif direction == "down":
-            y += SPACE_SIZE
-        elif direction == "left":
-            x -= SPACE_SIZE
-        elif direction == "right":
-            x += SPACE_SIZE
+
+    action = predict_action(num)
+    if action[0] == 1:
+        directions[num] = 'left'
+        print("went left")
+    if action[1] == 1:
+        directions[num] = 'right'
+        print("went right")
+    if action[2] == 1:
+        directions[num] = 'up'
+        print("went up")
+    if action[3] == 1:
+        directions[num] = 'down'
+        print("went down")
+
+    if directions[num] == "up":
+        y -= SPACE_SIZE
+    elif directions[num] == "down":
+        y += SPACE_SIZE
+    elif directions[num] == "left":
+        x -= SPACE_SIZE
+    elif directions[num] == "right":
+        x += SPACE_SIZE
 
     snake.coordinates.insert(0, (x, y))
     if draw:
@@ -262,19 +334,14 @@ def next_turn(snake, food, draw, WASD, num):
 
     if x == food.coordinates[0] and y == food.coordinates[1]:
 
-        global score
-        global score2
-        if num == '1':
-            score += 1
-        if num == '2':
-            score2 += 1
-        label.config(text="Score:{}".format(score))
-        label2.config(text="Score2:{}".format(score2))
-
+        fitness[num] += 1
+        for score in fitness:
+            if score > highest_fitness:
+                highest_fitness = score
+        label.config(text="High Score:{}".format(highest_fitness))
 
         canvas.delete("food" + str(num))
-
-        food = Food(num)
+        food = Food(num, draw)
 
     else:
 
@@ -284,51 +351,34 @@ def next_turn(snake, food, draw, WASD, num):
 
         del snake.squares[-1]
     if check_collisions(snake):
-        lives[num-1] = False
+        lives[num] = False
         snakes_still_alive = False
         for life in lives:
-            if life == True:
+            if life:
                 snakes_still_alive = True
         if snakes_still_alive:
             game_over_bnr(num)
         else:
             game_over()
 
-    window.after(SPEED, next_turn, snake, food, draw, WASD, num)
+    window.after(SPEED, next_turn, snake, food, draw, num)
 
 
+def change_direction(new_direction, num):
+    global directions
 
-
-def change_direction(new_direction, WASD):
-    global direction
-    global direction2
-
-    if WASD:
-        if new_direction == 'left':
-            if direction2 != 'right':
-                direction2 = new_direction
-        elif new_direction == 'right':
-            if direction2 != 'left':
-                direction2 = new_direction
-        elif new_direction == 'up':
-            if direction2 != 'down':
-                direction2 = new_direction
-        elif new_direction == 'down':
-            if direction2 != 'up':
-                direction2 = new_direction
-    else:
-        if new_direction == 'left':
-            if direction != 'right':
-                direction = new_direction
-        elif new_direction == 'right':
-            if direction != 'left':
-                direction = new_direction
-        elif new_direction == 'up':
-            if direction != 'down':
-                direction = new_direction
-        elif new_direction == 'down':
-            if direction != 'up':
-                direction = new_direction
+    if new_direction == 'left':
+        if directions[num] != 'right':
+            directions[num] = new_direction
+    elif new_direction == 'right':
+        if directions[num] != 'left':
+            directions[num] = new_direction
+    elif new_direction == 'up':
+        if directions[num] != 'down':
+            directions[num] = new_direction
+    elif new_direction == 'down':
+        if directions[num] != 'up':
+            directions[num] = new_direction
 
 
 def check_collisions(snake):
@@ -347,42 +397,30 @@ def check_collisions(snake):
 
 
 def game_over():
-    snake.clean()
-    snake2.clean()
-    canvas.delete('snake1')
-    canvas.delete('snake2')
-    canvas.delete('food1')
-    canvas.delete('food2')
+    for i in range(total_models):
+        snakes[i].clean()
+        canvas.delete("snake" + str(i))
+        canvas.delete("food" + str(i))
+    for i in range(total_models):
+        snakes[i].restart(i)
+        if i == highest_fitness:
+            food_s[i].restart(i, True)
+        else:
+            food_s[i].restart(i, True)
+    showGameOverScreen()
 
-    snake.restart(1)
-    snake2.restart(2)
-    food1.restart(1)
-    food2.restart(2)
 
 def game_over_bnr(num):
-    if num == 1:
-        snake.clean()
-        canvas.delete('snake1')
-        canvas.delete('food1')
+    snakes[num].clean
+    canvas.delete('snake' + str(num))
+    canvas.delete('food' + str(num))
 
-    else:
-        snake2.clean()
-        canvas.delete('snake2')
-        canvas.delete('food2')
 
 window = Tk()
 window.title("Snake game")
 window.resizable(False, False)
 
-#score
-score = 0
-score2 = 0
-direction = 'down'
-direction2 = 'down'
-
-label = Label(window, text="Score:{}".format(score), font=('consolas', 10))
-label2 = Label(window, text="Score2:{}".format(score2), font=('consolas', 50))
-label2.pack()
+label = Label(window, text="High Score:{}".format(highest_fitness), font=('consolas', 30))
 label.pack()
 
 canvas = Canvas(window, bg=BACKGROUND_COLOR, height=GAME_HEIGHT, width=GAME_WIDTH)
@@ -400,38 +438,15 @@ y = int((screen_height / 2) - (window_height / 2))
 
 window.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
-window.bind('<Left>', lambda event: change_direction('left', False))
-window.bind('<Right>', lambda event: change_direction('right', False))
-window.bind('<Up>', lambda event: change_direction('up', False))
-window.bind('<Down>', lambda event: change_direction('down', False))
-
-window.bind('<a>', lambda event: change_direction('left', True))
-window.bind('<d>', lambda event: change_direction('right', True))
-window.bind('<w>', lambda event: change_direction('up', True))
-window.bind('<s>', lambda event: change_direction('down', True))
-
-# const outputs=NeuralNetwork.feedForward(offsets,this.brain);
-# this.controls.forward=outputs[0];
-# this.controls.left=outputs[1];
-# this.controls.right=outputs[2];
-# this.controls.reverse=outputs[3];
-
-snake = Snake(1)
-snake2 = Snake(2)
-# snake3 = Snake('3')
-
-# snake3 = Snake()
-# snake4 = Snake()
-# snake5 = Snake()
+window.bind('<Left>', lambda event: change_direction('left', 0))
+window.bind('<Right>', lambda event: change_direction('right', 0))
+window.bind('<Up>', lambda event: change_direction('up', 0))
+window.bind('<Down>', lambda event: change_direction('down', 0))
 
 
-food1 = Food(1)
-food2 = Food(2)
-# food3 = Food('3')
-
-next_turn(snake, food1, True, False, 1)
-next_turn(snake2, food2, True, True, 2)
-# next_turn(snake3, food3, True, True, '3')
-
+initialize_game()
+initialize_models()
+actions = predict_action(0)
+next_turns()
 
 window.mainloop()
