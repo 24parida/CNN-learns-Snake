@@ -16,18 +16,24 @@ BODY_PARTS = 3
 SNAKE_COLOR = "#00FF00"
 FOOD_COLOR = "#FF0000"
 BACKGROUND_COLOR = "#000000"
-
-# generation
-lives = []
-snakes = []
-food_s = []
-directions = []
-positions = [0] * 199
+BACKGROUND_COLOR1 = "white"
 
 # machine learning
 current_pool = []
 fitness = []
-total_models = 2
+total_models = 1
+
+# generation
+lives = []
+snakes = []
+scores = []
+food_s = []
+directions = []
+highest_score = 0
+moves = [20] * total_models
+positions = [0] * 199
+
+
 
 generation = 1
 highest_fitness = 0
@@ -49,7 +55,7 @@ class Food:
         if draw:
             canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=FOOD_COLOR, tag="food" + str(num))
         else:
-            canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR, tag="food" + str(num))
+            canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, tag="food" + str(num))
 
     def restart(self, num, draw):
 
@@ -59,22 +65,20 @@ class Food:
         y = random.randint(0, (GAME_HEIGHT / SPACE_SIZE) - 1) * SPACE_SIZE
         self.coordinates = [x, y]
 
-        canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR)
-
         if draw:
             canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=FOOD_COLOR, tag="food" + str(num))
         else:
-            canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR, tag="food" + str(num))
+            canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, tag="food" + str(num))
 
     def clean(self, num):
         x = self.coordinates[0]
         y = self.coordinates[1]
-        canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR, tag="food" + str(num))
+        canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill = BACKGROUND_COLOR1, tag="food" + str(num))
 
 
 class Snake:
 
-    def __init__(self, num):
+    def __init__(self, num, draw):
         self.body_size = BODY_PARTS
         self.coordinates = []
         self.squares = []
@@ -83,11 +87,13 @@ class Snake:
             self.coordinates.append([0, 0])
 
         for x, y in self.coordinates:
-            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR,
-                                             tag="snake" + str(num))
+            if draw:
+                square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR, tag="snake" + str(num))
+            else:
+                square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, tag="snake" + str(num))
             self.squares.append(square)
 
-    def restart(self, num):
+    def restart(self, num, draw):
         global BODY_PARTS
         directions[num] = 'down'
 
@@ -99,13 +105,15 @@ class Snake:
             self.coordinates.append([0, 0])
 
         for x, y in self.coordinates:
-            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR,
-                                             tag="snake" + str(num))
+            if draw:
+                square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR, tag="snake" + str(num))
+            else:
+                square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, tag="snake" + str(num))
             self.squares.append(square)
 
     def clean(self):
         for x, y in self.coordinates:
-            canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR)
+            canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR1)
 
 
 def save_pool():
@@ -139,7 +147,10 @@ def predict_action(model_num):
         rx = x / 50
         ry = y / 50
         try:
-            positions[int((14 * rx) + ry)] = 5
+            if x == snakes[model_num].coordinates[0][0] and y == snakes[model_num].coordinates[0][1]:
+                positions[int((14 * rx) + ry)] = 10
+            else:
+                positions[int((14 * rx) + ry)] = 5
         except IndexError:
             print("fucked up Index")
             print("rx: " + str(rx) + " ry: " + str(ry))
@@ -202,27 +213,30 @@ def model_mutate(weights):
     return weights
 
 
-def showGameOverScreen():
+def new_generation():
     global current_pool
-    global fitness
+    global scores
+    global moves
     global generation
+    global highest_fitness
+    global best_weights
 
     new_weights = []
     total_fitness = 0
-
-    global highest_fitness
-    global hf_index
-    global best_weights
     updated = False
 
+    #calculate fitness
+    for score in range(len(scores)):
+        fitness[score] = (8 * scores[score]) + moves[score]
+
     # get total fitness / highest fitness
+
     for select in range(total_models):
         total_fitness += fitness[select]
 
         if fitness[select] > highest_fitness:
             updated = True
             highest_fitness = fitness[select]
-            hf_index = select
             best_weights = current_pool[select].get_weights()
 
     # get top two parents
@@ -235,13 +249,15 @@ def showGameOverScreen():
 
     for j in range(total_models):
         if j != parent1:
-            if fitness[j] > fitness[parent2]:
+            if fitness[j] >= fitness[parent2]:
                 parent2 = j
-    # getting crossover weights
+    print("best parent: " + str(parent1) + " second best: " + str(parent2))
 
+    # getting crossover weights
     for select in range(total_models // 2):
         cross_over_weights = model_crossover(parent1, parent2)
         if not updated:
+            print("not updated")
             cross_over_weights[1] = best_weights
         mutated1 = model_mutate(cross_over_weights[0])
         mutated2 = model_mutate(cross_over_weights[1])
@@ -249,22 +265,22 @@ def showGameOverScreen():
         new_weights.append(mutated1)
         new_weights.append(mutated2)
 
-        for select in range(len(new_weights)):
-            fitness[select] = -100
-            current_pool[select].set_weights(new_weights[select])
-        save_pool()
+    for select in range(len(new_weights)):
+        current_pool[select].set_weights(new_weights[select])
 
-        generation += 1
-        return
+    for fit in range(len(fitness)):
+        fitness[fit] = 0
+    # save_pool()
+
+    generation += 1
+    return
 
 
 def initialize_models():
     global total_models
-    global fitness
     for i in range(total_models):
         model = create_model()
         current_pool.append(model)
-        fitness.append(-100)
 
 
 def initialize_game():
@@ -272,27 +288,33 @@ def initialize_game():
     global snakes
     global food_s
     global hf_index
+    global scores
     global highest_fitness
+    global highest_score
 
     hf_index = 0
     highest_fitness = 0
+    highest_score = 0
 
     for i in range(total_models):
         lives.append(True)
-        snake = Snake(i)
-        snakes.append(snake)
         if i == hf_index:
+            snake = Snake(i, True)
             food = Food(i, True)
         else:
+            snake = Snake(i, True)
             food = Food(i, True)
+
+        snakes.append(snake)
         food_s.append(food)
-        fitness.append(0)
+        scores.append(0)
         directions.append('down')
     initialize_models()
 
 
 def next_turns():
     global hf_index
+    global total_models
 
     for i in range(total_models):
         if i == hf_index:
@@ -303,14 +325,22 @@ def next_turns():
 
 def next_turn(snake, food, draw, num):
     global lives
-    global highest_fitness
+    global highest_score
     global hf_index
+    global moves
+    global scores
 
     if lives[num]:
+        try:
+            moves[num] -= 1
+        except:
+            print("moves " + str(moves))
+            print("moves type " + str(type(moves)))
+            print("moves[num] " + str(moves[num]))
 
         x, y = snake.coordinates[0]
-        action = predict_action(num)
-
+        # action = predict_action(num)
+        #
         # direction_temp = 0
         # for direction in range(len(action)):
         #     if action[direction] > action[direction_temp]:
@@ -338,15 +368,16 @@ def next_turn(snake, food, draw, num):
         if draw:
             square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR)
         else:
-            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR)
+            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill = BACKGROUND_COLOR1)
 
         snake.squares.insert(0, square)
         if x == food.coordinates[0] and y == food.coordinates[1]:
-            fitness[num] += 1
-            if fitness[num] > highest_fitness:
-                highest_fitness = fitness[num]
-                hf_index = num
-            label.config(text="High Score:{}".format(highest_fitness))
+            scores[num] += 1
+            moves[num] += 8
+            if scores[num] >= highest_score and lives[num]:
+                highest_score = scores[num]
+
+            label.config(text="High Score:{}".format(highest_score))
 
             canvas.delete("food" + str(num))
             food.restart(num, draw)
@@ -358,9 +389,16 @@ def next_turn(snake, food, draw, num):
             canvas.delete(snake.squares[-1])
 
             del snake.squares[-1]
-        if check_collisions(snake):
+        if check_collisions(snake) or moves[num] <= 0:
             lives[num] = False
             snakes_still_alive = False
+            # updated = False
+            # # if num == hf_index:
+            # #     for i in range(total_models):
+            # #         if lives[i] and not updated:
+            # #             hf_index = i
+            # #             updated = True
+            # # print("hf index + " + str(hf_index))
             for life in lives:
                 if life:
                     snakes_still_alive = True
@@ -406,29 +444,42 @@ def check_collisions(snake):
 
 
 def game_over():
-    global hf_index
+    print("game over")
     global lives
-    global highest_fitness
     global hf_index
+    global generation
+    global highest_score
+    global moves
 
-    highest_fitness = 0
+    generation += 1
+    highest_score = 0
     hf_index = 0
-    label.config(text="High Score:{}".format(highest_fitness))
+    label.config(text="High Score:{}".format(highest_score))
+    label2.config(text="Generation:{}".format(generation))
+
+    new_generation()
 
     for i in range(total_models):
         lives[i] = True
-        fitness[i] = 0
+        scores[i] = 0
+        moves[i] = 20
         directions[i] = 'down'
     for i in range(total_models):
-        snakes[i].restart(i)
+
         if i == hf_index:
             food_s[i].restart(i, True)
+            snakes[i].restart(i, True)
         else:
             food_s[i].restart(i, True)
+            snakes[i].restart(i, True)
+
 
 
 def game_over_bnr(num):
-    print("direction fucked up: " + str(directions[num]))
+    global hf_index
+
+    print("direction fucked up: " + str(directions[num]) + " num: " + str(num))
+
     canvas.delete("snake" + str(num))
     canvas.delete("food" + str(num))
     snakes[num].clean()
@@ -439,10 +490,13 @@ window = Tk()
 window.title("Snake game")
 window.resizable(False, False)
 
-label = Label(window, text="High Score:{}".format(highest_fitness), font=('consolas', 30))
-label.pack()
+label = Label(window, text="High Score:{}".format(highest_score), font=('consolas', 20))
+label2 = Label(window, text="Generation:{}".format(generation), font=('consolas', 20))
 
-canvas = Canvas(window, bg=BACKGROUND_COLOR, height=GAME_HEIGHT, width=GAME_WIDTH)
+label.pack()
+label2.pack()
+
+canvas = Canvas(window, bg=BACKGROUND_COLOR1, height=GAME_HEIGHT, width=GAME_WIDTH)
 canvas.pack()
 
 window.update()
