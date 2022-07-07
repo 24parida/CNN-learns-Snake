@@ -27,7 +27,7 @@ positions = [0] * 199
 # machine learning
 current_pool = []
 fitness = []
-total_models = 1
+total_models = 2
 
 generation = 1
 highest_fitness = 0
@@ -59,15 +59,12 @@ class Food:
         y = random.randint(0, (GAME_HEIGHT / SPACE_SIZE) - 1) * SPACE_SIZE
         self.coordinates = [x, y]
 
-        canvas.create_rectangle(x,y,x+SPACE_SIZE, y+SPACE_SIZE, fill=BACKGROUND_COLOR)
+        canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR)
 
         if draw:
             canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=FOOD_COLOR, tag="food" + str(num))
         else:
             canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR, tag="food" + str(num))
-
-    def getBody(self):
-        return self.coordinates
 
     def clean(self, num):
         x = self.coordinates[0]
@@ -86,11 +83,9 @@ class Snake:
             self.coordinates.append([0, 0])
 
         for x, y in self.coordinates:
-            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR, tag="snake" + str(num))
+            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR,
+                                             tag="snake" + str(num))
             self.squares.append(square)
-
-    def getBody(self):
-        return self.coordinates
 
     def restart(self, num):
         global BODY_PARTS
@@ -110,7 +105,7 @@ class Snake:
 
     def clean(self):
         for x, y in self.coordinates:
-            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR)
+            canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR)
 
 
 def save_pool():
@@ -137,10 +132,13 @@ def predict_action(model_num):
     global current_pool
     global positions
 
+    for i in range(len(positions)):
+        positions[i] = 0
+
     for x, y in snakes[model_num].coordinates:
         rx = x / 50
         ry = y / 50
-        positions[int((14 * rx) + ry)] = 0.5
+        positions[int((14 * rx) + ry)] = 5
 
     x = food_s[model_num].coordinates[0]
     y = food_s[model_num].coordinates[1]
@@ -162,8 +160,6 @@ def predict_action(model_num):
     neural_input = np.asarray(positions)
     neural_input = np.atleast_2d(neural_input)
 
-    # TODO
-    # do multiple outputs since we are working with a output layer of size 4
     output_prob = current_pool[model_num].predict(neural_input)
 
     final_prob = [0, 0, 0, 0]
@@ -288,7 +284,7 @@ def initialize_game():
         food_s.append(food)
         fitness.append(0)
         directions.append('down')
-    # initialize_models()
+    initialize_models()
 
 
 def next_turns():
@@ -302,44 +298,26 @@ def next_turns():
 
 
 def next_turn(snake, food, draw, num):
-
     global lives
     global highest_fitness
     global hf_index
 
     x, y = snake.coordinates[0]
-
     action = predict_action(num)
-    action_string = [''] * 4
 
-    print(str(action))
-    # if action[0] == 1:
-    #     directions[num] = 'left'
-    #     action_string[0] = 'left, '
-    # if action[1] == 1:
-    #     directions[num] = 'right'
-    #     action_string[1] = 'right, '
-    # if action[2] == 1:
-    #     directions[num] = 'up'
-    #     action_string[2] = 'up, '
-    # if action[3] == 1:
-    #     directions[num] = 'down'
-    #     action_string[3] = 'down'
     direction_temp = 0
     for direction in range(len(action)):
         if action[direction] > action[direction_temp]:
             direction_temp = direction
-    print(str(direction_temp))
 
     if direction_temp == 0:
-        directions[num] = 'down'
+        change_direction('down', num)
     elif direction_temp == 1:
         directions[num] = 'up'
     elif direction_temp == 2:
         directions[num] = 'right'
     elif direction_temp == 3:
         directions[num] = 'left'
-    print(str(directions[num]))
 
     if directions[num] == "up":
         y -= SPACE_SIZE
@@ -429,14 +407,10 @@ def game_over():
 
     highest_fitness = 0
     hf_index = 0
-    label.pack()
+    label.config(text="High Score:{}".format(highest_fitness))
 
-    print("initialized")
     for i in range(total_models):
-        # canvas.delete("snake" + str(i))
-        # canvas.delete("food" + str(i))
         lives[i] = True
-
         fitness[i] = 0
         directions[i] = 'down'
     for i in range(total_models):
@@ -448,12 +422,12 @@ def game_over():
 
 
 def game_over_bnr(num):
-    print("bnr")
     snakes[num].clean()
     food_s[num].clean(num)
 
     canvas.delete("snake" + str(num))
     canvas.delete("food" + str(num))
+
 
 window = Tk()
 window.title("Snake game")
@@ -483,7 +457,5 @@ window.geometry(f"{window_width}x{window_height}+{x}+{y}")
 # window.bind('<Down>', lambda event: change_direction('down', 0))
 
 initialize_game()
-initialize_models()
 next_turns()
-
 window.mainloop()
