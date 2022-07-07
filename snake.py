@@ -138,7 +138,11 @@ def predict_action(model_num):
     for x, y in snakes[model_num].coordinates:
         rx = x / 50
         ry = y / 50
-        positions[int((14 * rx) + ry)] = 5
+        try:
+            positions[int((14 * rx) + ry)] = 5
+        except IndexError:
+            print("fucked up Index")
+            print("rx: " + str(rx) + " ry: " + str(ry))
 
     x = food_s[model_num].coordinates[0]
     y = food_s[model_num].coordinates[1]
@@ -302,67 +306,69 @@ def next_turn(snake, food, draw, num):
     global highest_fitness
     global hf_index
 
-    x, y = snake.coordinates[0]
-    action = predict_action(num)
+    if lives[num]:
 
-    direction_temp = 0
-    for direction in range(len(action)):
-        if action[direction] > action[direction_temp]:
-            direction_temp = direction
+        x, y = snake.coordinates[0]
+        action = predict_action(num)
 
-    if direction_temp == 0:
-        change_direction('down', num)
-    elif direction_temp == 1:
-        directions[num] = 'up'
-    elif direction_temp == 2:
-        directions[num] = 'right'
-    elif direction_temp == 3:
-        directions[num] = 'left'
+        # direction_temp = 0
+        # for direction in range(len(action)):
+        #     if action[direction] > action[direction_temp]:
+        #         direction_temp = direction
+        #
+        # if direction_temp == 0:
+        #     change_direction('down', num)
+        # elif direction_temp == 1:
+        #     change_direction('up', num)
+        # elif direction_temp == 2:
+        #     change_direction('right', num)
+        # elif direction_temp == 3:
+        #     change_direction('left', num)
 
-    if directions[num] == "up":
-        y -= SPACE_SIZE
-    elif directions[num] == "down":
-        y += SPACE_SIZE
-    elif directions[num] == "left":
-        x -= SPACE_SIZE
-    elif directions[num] == "right":
-        x += SPACE_SIZE
+        if directions[num] == "up":
+            y -= SPACE_SIZE
+        elif directions[num] == "down":
+            y += SPACE_SIZE
+        elif directions[num] == "left":
+            x -= SPACE_SIZE
+        elif directions[num] == "right":
+            x += SPACE_SIZE
 
-    snake.coordinates.insert(0, (x, y))
-    if draw:
-        square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR)
-    else:
-        square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR)
-
-    snake.squares.insert(0, square)
-    if x == food.coordinates[0] and y == food.coordinates[1]:
-        fitness[num] += 1
-        if fitness[num] > highest_fitness:
-            highest_fitness = fitness[num]
-            hf_index = num
-        label.config(text="High Score:{}".format(highest_fitness))
-
-        canvas.delete("food" + str(num))
-        food.restart(num, draw)
-
-    else:
-
-        del snake.coordinates[-1]
-
-        canvas.delete(snake.squares[-1])
-
-        del snake.squares[-1]
-    if check_collisions(snake) and lives[num]:
-        lives[num] = False
-        snakes_still_alive = False
-        for life in lives:
-            if life:
-                snakes_still_alive = True
-        if snakes_still_alive:
-            game_over_bnr(num)
+        snake.coordinates.insert(0, (x, y))
+        if draw:
+            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR)
         else:
-            game_over_bnr(num)
-            game_over()
+            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR)
+
+        snake.squares.insert(0, square)
+        if x == food.coordinates[0] and y == food.coordinates[1]:
+            fitness[num] += 1
+            if fitness[num] > highest_fitness:
+                highest_fitness = fitness[num]
+                hf_index = num
+            label.config(text="High Score:{}".format(highest_fitness))
+
+            canvas.delete("food" + str(num))
+            food.restart(num, draw)
+
+        else:
+
+            del snake.coordinates[-1]
+
+            canvas.delete(snake.squares[-1])
+
+            del snake.squares[-1]
+        if check_collisions(snake):
+            lives[num] = False
+            snakes_still_alive = False
+            for life in lives:
+                if life:
+                    snakes_still_alive = True
+            if snakes_still_alive:
+                game_over_bnr(num)
+            else:
+                game_over_bnr(num)
+                game_over()
 
     window.after(SPEED, next_turn, snake, food, draw, num)
 
@@ -422,11 +428,11 @@ def game_over():
 
 
 def game_over_bnr(num):
-    snakes[num].clean()
-    food_s[num].clean(num)
-
+    print("direction fucked up: " + str(directions[num]))
     canvas.delete("snake" + str(num))
     canvas.delete("food" + str(num))
+    snakes[num].clean()
+    food_s[num].clean(num)
 
 
 window = Tk()
@@ -451,10 +457,10 @@ y = int((screen_height / 2) - (window_height / 2))
 
 window.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
-# window.bind('<Left>', lambda event: change_direction('left', 0))
-# window.bind('<Right>', lambda event: change_direction('right', 0))
-# window.bind('<Up>', lambda event: change_direction('up', 0))
-# window.bind('<Down>', lambda event: change_direction('down', 0))
+window.bind('<Left>', lambda event: change_direction('left', 0))
+window.bind('<Right>', lambda event: change_direction('right', 0))
+window.bind('<Up>', lambda event: change_direction('up', 0))
+window.bind('<Down>', lambda event: change_direction('down', 0))
 
 initialize_game()
 next_turns()
