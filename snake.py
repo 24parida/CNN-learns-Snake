@@ -16,7 +16,6 @@ BODY_PARTS = 3
 SNAKE_COLOR = "#00FF00"
 FOOD_COLOR = "#FF0000"
 BACKGROUND_COLOR = "#000000"
-BACKGROUND_COLOR2 = "white"
 
 # generation
 lives = []
@@ -28,7 +27,7 @@ positions = [0] * 199
 # machine learning
 current_pool = []
 fitness = []
-total_models = 2
+total_models = 1
 
 generation = 1
 highest_fitness = 0
@@ -42,9 +41,7 @@ OUTPUT_LAYER = 4;
 
 class Food:
     def __init__(self, num, draw):
-        if num == 0:
-            print("RANDOMIZED")
-            print("RANDOMIZED")
+
         x = random.randint(0, (GAME_WIDTH / SPACE_SIZE) - 1) * SPACE_SIZE
         y = random.randint(0, (GAME_HEIGHT / SPACE_SIZE) - 1) * SPACE_SIZE
 
@@ -61,9 +58,7 @@ class Food:
         x = random.randint(0, (GAME_WIDTH / SPACE_SIZE) - 1) * SPACE_SIZE
         y = random.randint(0, (GAME_HEIGHT / SPACE_SIZE) - 1) * SPACE_SIZE
         self.coordinates = [x, y]
-        if num == 0:
-            print("RESTARTED")
-            print('x: ' + str(x/50) + ' y: ' + str(y/50) + " num: " + str(num))
+
         canvas.create_rectangle(x,y,x+SPACE_SIZE, y+SPACE_SIZE, fill=BACKGROUND_COLOR)
 
         if draw:
@@ -77,7 +72,6 @@ class Food:
     def clean(self, num):
         x = self.coordinates[0]
         y = self.coordinates[1]
-        # print("x " + str(x / 50) + " y " + str(y / 50))
         canvas.create_oval(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR, tag="food" + str(num))
 
 
@@ -146,7 +140,6 @@ def predict_action(model_num):
     for x, y in snakes[model_num].coordinates:
         rx = x / 50
         ry = y / 50
-        # print("yuh" + str(int((14 * rx) + ry)))
         positions[int((14 * rx) + ry)] = 0.5
 
     x = food_s[model_num].coordinates[0]
@@ -155,13 +148,13 @@ def predict_action(model_num):
     ry = y / 50
 
     if directions[model_num] == 'down':
-        positions[196] = -1
+        positions[196] = 2
     elif directions[model_num] == 'up':
-        positions[196] = 1
+        positions[196] = 4
     elif directions[model_num] == 'right':
-        positions[196] = 0.5
+        positions[196] = 6
     elif directions[model_num] == 'left':
-        positions[196] = -0.5
+        positions[196] = 8
 
     positions[197] = int(rx)
     positions[198] = int(ry)
@@ -174,15 +167,11 @@ def predict_action(model_num):
     output_prob = current_pool[model_num].predict(neural_input)
 
     final_prob = [0, 0, 0, 0]
+    final_prob[0] = output_prob[0][0]
+    final_prob[1] = output_prob[0][1]
+    final_prob[2] = output_prob[0][2]
+    final_prob[3] = output_prob[0][3]
 
-    if output_prob[0][0] >= .5:
-        final_prob[0] = 1
-    if output_prob[0][1] >= .5:
-        final_prob[1] = 1
-    if output_prob[0][2] >= .5:
-        final_prob[2] = 1
-    if output_prob[0][3] >= 0.5:
-        final_prob[3] = 1
     return final_prob
 
 
@@ -320,15 +309,37 @@ def next_turn(snake, food, draw, num):
 
     x, y = snake.coordinates[0]
 
-    # action = predict_action(num)
+    action = predict_action(num)
+    action_string = [''] * 4
+
+    print(str(action))
     # if action[0] == 1:
     #     directions[num] = 'left'
+    #     action_string[0] = 'left, '
     # if action[1] == 1:
     #     directions[num] = 'right'
+    #     action_string[1] = 'right, '
     # if action[2] == 1:
     #     directions[num] = 'up'
+    #     action_string[2] = 'up, '
     # if action[3] == 1:
     #     directions[num] = 'down'
+    #     action_string[3] = 'down'
+    direction_temp = 0
+    for direction in range(len(action)):
+        if action[direction] > action[direction_temp]:
+            direction_temp = direction
+    print(str(direction_temp))
+
+    if direction_temp == 0:
+        directions[num] = 'down'
+    elif direction_temp == 1:
+        directions[num] = 'up'
+    elif direction_temp == 2:
+        directions[num] = 'right'
+    elif direction_temp == 3:
+        directions[num] = 'left'
+    print(str(directions[num]))
 
     if directions[num] == "up":
         y -= SPACE_SIZE
@@ -346,11 +357,7 @@ def next_turn(snake, food, draw, num):
         square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=BACKGROUND_COLOR)
 
     snake.squares.insert(0, square)
-    if num == 0:
-        print("snake x: " + str(x/50) + " snake y: " + str(y/50))
-        print("food x: " + str(food.coordinates[0]/50) + " food y: " + str(food.coordinates[1]/50))
     if x == food.coordinates[0] and y == food.coordinates[1]:
-
         fitness[num] += 1
         if fitness[num] > highest_fitness:
             highest_fitness = fitness[num]
@@ -455,7 +462,7 @@ window.resizable(False, False)
 label = Label(window, text="High Score:{}".format(highest_fitness), font=('consolas', 30))
 label.pack()
 
-canvas = Canvas(window, bg=BACKGROUND_COLOR2, height=GAME_HEIGHT, width=GAME_WIDTH)
+canvas = Canvas(window, bg=BACKGROUND_COLOR, height=GAME_HEIGHT, width=GAME_WIDTH)
 canvas.pack()
 
 window.update()
@@ -470,14 +477,13 @@ y = int((screen_height / 2) - (window_height / 2))
 
 window.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
-window.bind('<Left>', lambda event: change_direction('left', 0))
-window.bind('<Right>', lambda event: change_direction('right', 0))
-window.bind('<Up>', lambda event: change_direction('up', 0))
-window.bind('<Down>', lambda event: change_direction('down', 0))
+# window.bind('<Left>', lambda event: change_direction('left', 0))
+# window.bind('<Right>', lambda event: change_direction('right', 0))
+# window.bind('<Up>', lambda event: change_direction('up', 0))
+# window.bind('<Down>', lambda event: change_direction('down', 0))
 
 initialize_game()
 initialize_models()
-actions = predict_action(0)
 next_turns()
 
 window.mainloop()
