@@ -15,7 +15,7 @@ FOOD_COLOR = "#FF0000"
 BACKGROUND_COLOR = "#000000"
 
 global gen_count
-gen_count = 10
+gen_count = 1
 
 # gen - snake - properties
 global snakes, foods, directions, moves
@@ -74,10 +74,9 @@ class Food:
         self.coordinates.clear()
 
 
-def next_turns():
+def main():
     pops = []
 
-    print(len(snakes))
     for i in range(len(snakes)):
         next_turn(i)
         if check_collisions(snakes[i]) or moves[i] == 0:
@@ -87,25 +86,28 @@ def next_turns():
             state_of_game(i)
 
     if len(pops) != 0:
-        pops.sort(reverse = True)
+        pops.sort(reverse=True)
         for pop in pops:
             snakes.pop(pop)
             foods.pop(pop)
             directions.pop(pop)
             moves.pop(pop)
 
-    window.after(SPEED, next_turns)
-    window.mainloop()
+    if len(snakes) != 0:
+        print("looping")
+        print("--------")
+        window.after(SPEED, main)
+        window.mainloop()
+    if len(snakes) == 0:
+        window.destroy()
+        exit()
+
 
 
 def next_turn(num):
     moves[num] -= 1
 
-    try:
-        x, y = snakes[num].coordinates[0]
-    except:
-        print("index: " + str(num))
-
+    x, y = snakes[num].coordinates[0]
     if directions[num] == "up":
         y -= SPACE_SIZE
     elif directions[num] == "down":
@@ -163,8 +165,6 @@ def check_collisions(snake):
 
     for body_part in snake.coordinates[1:]:
         if x == body_part[0] and y == body_part[1]:
-            print("body part x: " + str(body_part[0]) + " body part y: " + str(body_part[1]))
-            print("x: " + str(x) + " y: " + str(y))
             return True
 
     return False
@@ -210,10 +210,6 @@ def state_of_game(num):
         elif val == 30:
             p1a[(i*3) + 2] = 10
     return p1a
-
-
-def main():
-    next_turns()
 
 
 window = Tk()
