@@ -9,25 +9,26 @@ import neat
 
 GAME_WIDTH = 700
 GAME_HEIGHT = 700
-SPEED = 200
+SPEED = 400
 SPACE_SIZE = 140
 BODY_PARTS = 3
 SNAKE_COLOR = "#00FF00"
 FOOD_COLOR = "#FF0000"
+FOOD_COLOR2 = "blue"
 BACKGROUND_COLOR = "#000000"
 
 global gen_count
 gen_count = 2
 
 # gen - snake - properties
-global snakes, foods, directions, moves, nets, ge
+global snakes, foods, directions, moves, nets, ge, count
 snakes = []
 foods = []
 directions = []
 moves = []
 nets = []
 ge = []
-
+count = []
 
 def run(config_file):
     config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction,
@@ -55,7 +56,7 @@ def initialize(genomes, config):
         foods.append(Food(i))
         directions.append('down')
         moves.append(30)
-
+        count.append(i)
 
 def eval_genomes(genomes, config):
     initialize(genomes, config)
@@ -121,12 +122,15 @@ def main():
             foods.pop(pop)
             directions.pop(pop)
             moves.pop(pop)
+            count.pop(pop)
             nets.pop(pop)
             ge.pop(pop)
 
     if len(snakes) != 0:
         window.after(SPEED, main)
         window.mainloop()
+    else:
+        canvas.delete(ALL)
 
 
 def next_turn(num):
@@ -154,9 +158,9 @@ def next_turn(num):
             found_food = True
             moves[num] += 20
             ge[num].fitness += 5
-
-            canvas.delete("food"+str(num))
-            foods[num] = Food(num)
+            a = count[num]
+            canvas.delete("food"+str(a))
+            foods[num] = Food(a)
 
     if not found_food:
         del snakes[num].coordinates[-1]
@@ -199,8 +203,12 @@ def check_collisions(snake):
 def game_over(num):
     snakes[num].restart()
     foods[num].restart()
-    canvas.delete("snake"+str(num))
-    canvas.delete("food"+str(num))
+    a = count[num]
+    print("a: " + str(a))
+    print("snake"+str(a))
+    print("food"+str(a))
+    canvas.delete("snake"+str(a))
+    canvas.delete("food"+str(a))
 
 
 def state_of_game(num):
@@ -256,14 +264,20 @@ y = int((screen_height / 2) - (window_height / 2))
 
 window.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
-# window.bind('<Left>', lambda event: change_direction('left', 0))
-# window.bind('<Right>', lambda event: change_direction('right', 0))
-# window.bind('<Up>', lambda event: change_direction('up', 0))
-# window.bind('<Down>', lambda event: change_direction('down', 0))
+window.bind('<Left>', lambda event: change_direction('left', 0))
+window.bind('<Right>', lambda event: change_direction('right', 0))
+window.bind('<Up>', lambda event: change_direction('up', 0))
+window.bind('<Down>', lambda event: change_direction('down', 0))
+
+window.bind('<a>', lambda event: change_direction('left', 1))
+window.bind('<d>', lambda event: change_direction('right', 1))
+window.bind('<w>', lambda event: change_direction('up', 1))
+window.bind('<s>', lambda event: change_direction('down', 1))
 
 if __name__ == '__main__':
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, 'config-feedforward.txt')
     run(config_path)
+    eval_genomes(config_path)
 
 
