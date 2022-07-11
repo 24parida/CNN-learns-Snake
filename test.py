@@ -4,6 +4,8 @@
 import snake
 from tkinter import *
 import random
+import os
+import neat
 
 GAME_WIDTH = 700
 GAME_HEIGHT = 700
@@ -15,31 +17,49 @@ FOOD_COLOR = "#FF0000"
 BACKGROUND_COLOR = "#000000"
 
 global gen_count
-gen_count = 1
+gen_count = 2
 
 # gen - snake - properties
-global snakes, foods, directions, moves
+global snakes, foods, directions, moves, nets, ge
 snakes = []
 foods = []
 directions = []
 moves = []
+nets = []
+ge = []
 
 
-def initialize():
+def run(config_file):
+    config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                                neat.DefaultSpeciesSet, neat.DefaultStagnation,
+                                config_file)
+
+    p = neat.Population(config)
+
+    # p.add_reporter(neat.StdOutReporter(True))
+    # stats = neat.StatisticsReporter()
+    # p.add_reporter(stats)
+
+    winner = p.run(eval_genomes, 50)
+
+
+def initialize(genomes, config):
     print("initializing")
-    for i in range(gen_count):
+
+    for i, genome in genomes:
+        genome.fitness = 0  # start with fitness level of 0
+        net = neat.nn.FeedForwardNetwork.create(genome, config)
+        nets.append(net)
+        ge.append(genome)
         snakes.append(Snake(i))
         foods.append(Food(i))
         directions.append('down')
         moves.append(30)
 
 
-def restart():
-    for i in range(gen_count):
-        snakes[i] = Snake(i)
-        foods[i] = Food(i)
-        directions[i] = 'down'
-        moves[i] = 30
+def eval_genomes(genomes, config):
+    initialize(genomes, config)
+    main()
 
 
 class Snake:
@@ -76,14 +96,23 @@ class Food:
 
 def main():
     pops = []
-
     for i in range(len(snakes)):
         next_turn(i)
         if check_collisions(snakes[i]) or moves[i] == 0:
+            print("game over: " + str(i))
             game_over(i)
             pops.append(i)
         else:
-            state_of_game(i)
+            output = nets[i].activate(state_of_game(i))
+            di = output.index(max(output))
+            if di == 0:
+                change_direction('down', i)
+            elif di == 1:
+                change_direction('up', i)
+            elif di == 2:
+                change_direction('right', i)
+            elif di == 3:
+                change_direction('left', i)
 
     if len(pops) != 0:
         pops.sort(reverse=True)
@@ -92,16 +121,12 @@ def main():
             foods.pop(pop)
             directions.pop(pop)
             moves.pop(pop)
+            nets.pop(pop)
+            ge.pop(pop)
 
     if len(snakes) != 0:
-        print("looping")
-        print("--------")
         window.after(SPEED, main)
         window.mainloop()
-    if len(snakes) == 0:
-        window.destroy()
-        exit()
-
 
 
 def next_turn(num):
@@ -128,6 +153,7 @@ def next_turn(num):
 
             found_food = True
             moves[num] += 20
+            ge[num].fitness += 5
 
             canvas.delete("food"+str(num))
             foods[num] = Food(num)
@@ -230,11 +256,14 @@ y = int((screen_height / 2) - (window_height / 2))
 
 window.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
-window.bind('<Left>', lambda event: change_direction('left', 0))
-window.bind('<Right>', lambda event: change_direction('right', 0))
-window.bind('<Up>', lambda event: change_direction('up', 0))
-window.bind('<Down>', lambda event: change_direction('down', 0))
+# window.bind('<Left>', lambda event: change_direction('left', 0))
+# window.bind('<Right>', lambda event: change_direction('right', 0))
+# window.bind('<Up>', lambda event: change_direction('up', 0))
+# window.bind('<Down>', lambda event: change_direction('down', 0))
 
 if __name__ == '__main__':
-    initialize()
-    main()
+    local_dir = os.path.dirname(__file__)
+    config_path = os.path.join(local_dir, 'config-feedforward.txt')
+    run(config_path)
+
+
