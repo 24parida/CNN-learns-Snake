@@ -6,7 +6,6 @@ from tkinter import *
 import random
 import os
 import neat
-import visualize
 import pickle
 
 GAME_WIDTH = 700
@@ -110,7 +109,7 @@ class Snake:
             self.coordinates.insert(0, [0, (SPACE_SIZE * i)])
 
         for x, y in self.coordinates:
-            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR, tag="snake" + str(num))
+            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, tag="snake" + str(num))
             self.squares.append(square)
 
     def restart(self):
