@@ -6,10 +6,12 @@ from tkinter import *
 import random
 import os
 import neat
+import visualize
+import pickle
 
 GAME_WIDTH = 700
 GAME_HEIGHT = 700
-SPEED = 400
+SPEED = 1000
 SPACE_SIZE = 140
 BODY_PARTS = 3
 SNAKE_COLOR = "#00FF00"
@@ -18,10 +20,10 @@ FOOD_COLOR2 = "blue"
 BACKGROUND_COLOR = "#000000"
 
 global gen_count
-gen_count = 2
+gen_count = 10
 
 # gen - snake - properties
-global snakes, foods, directions, moves, nets, ge, count
+global snakes, foods, directions, moves, nets, ge, count, lives
 snakes = []
 foods = []
 directions = []
@@ -29,6 +31,8 @@ moves = []
 nets = []
 ge = []
 count = []
+lives = []
+
 
 def run(config_file):
     config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction,
@@ -37,28 +41,60 @@ def run(config_file):
 
     p = neat.Population(config)
 
-    # p.add_reporter(neat.StdOutReporter(True))
-    # stats = neat.StatisticsReporter()
-    # p.add_reporter(stats)
+    p.add_reporter(neat.StdOutReporter(True))
+    stats = neat.StatisticsReporter()
+    p.add_reporter(stats)
 
-    winner = p.run(eval_genomes, 50)
+    winner = p.run(eval_genomes, 10)
+    print('\nBest genome:\n{!s}'.format(winner))
 
 
 def initialize(genomes, config):
     print("initializing")
+    global window, canvas
+    window = Tk()
+    window.title("Snake game")
+    window.resizable(False, False)
+
+    canvas = Canvas(window, bg=BACKGROUND_COLOR, height=GAME_HEIGHT, width=GAME_WIDTH)
+    canvas.pack()
+    window.update()
+
+    window_width = window.winfo_width()
+    window_height = window.winfo_height()
+    screen_width = window.winfo_screenwidth()
+    screen_height = window.winfo_screenheight()
+
+    x = int((screen_width / 2) - (window_width / 2))
+    y = int((screen_height / 2) - (window_height / 2))
+
+    window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
+    snakes.clear()
+    foods.clear()
+    directions.clear()
+    moves.clear()
+    count.clear()
+    lives.clear()
 
     for i, genome in genomes:
         genome.fitness = 0  # start with fitness level of 0
         net = neat.nn.FeedForwardNetwork.create(genome, config)
+        net.draw
         nets.append(net)
         ge.append(genome)
+    for i in range(gen_count):
         snakes.append(Snake(i))
         foods.append(Food(i))
         directions.append('down')
         moves.append(30)
         count.append(i)
+        lives.append(True)
+    print(str(count))
+
 
 def eval_genomes(genomes, config):
+    print("evaluating genomes...")
     initialize(genomes, config)
     main()
 
@@ -97,10 +133,13 @@ class Food:
 
 def main():
     pops = []
+    print(str(len(snakes)))
     for i in range(len(snakes)):
-        next_turn(i)
+        if lives[i]:
+            next_turn(i)
         if check_collisions(snakes[i]) or moves[i] == 0:
-            print("game over: " + str(i))
+            # print("game over: " + str(i))
+            lives[i] = False
             game_over(i)
             pops.append(i)
         else:
@@ -123,6 +162,7 @@ def main():
             directions.pop(pop)
             moves.pop(pop)
             count.pop(pop)
+            lives.pop(pop)
             nets.pop(pop)
             ge.pop(pop)
 
@@ -131,6 +171,8 @@ def main():
         window.mainloop()
     else:
         canvas.delete(ALL)
+        window.destroy()
+        return
 
 
 def next_turn(num):
@@ -158,6 +200,9 @@ def next_turn(num):
             found_food = True
             moves[num] += 20
             ge[num].fitness += 5
+            if ge[num].fitness > 50:
+                pickle.dump(nets[num], open("best.pickle", "wb"))
+                break
             a = count[num]
             canvas.delete("food"+str(a))
             foods[num] = Food(a)
@@ -204,9 +249,6 @@ def game_over(num):
     snakes[num].restart()
     foods[num].restart()
     a = count[num]
-    print("a: " + str(a))
-    print("snake"+str(a))
-    print("food"+str(a))
     canvas.delete("snake"+str(a))
     canvas.delete("food"+str(a))
 
@@ -246,38 +288,18 @@ def state_of_game(num):
     return p1a
 
 
-window = Tk()
-window.title("Snake game")
-window.resizable(False, False)
+global window
+global canvas
 
-canvas = Canvas(window, bg=BACKGROUND_COLOR, height=GAME_HEIGHT, width=GAME_WIDTH)
-canvas.pack()
-window.update()
 
-window_width = window.winfo_width()
-window_height = window.winfo_height()
-screen_width = window.winfo_screenwidth()
-screen_height = window.winfo_screenheight()
-
-x = int((screen_width / 2) - (window_width / 2))
-y = int((screen_height / 2) - (window_height / 2))
-
-window.geometry(f"{window_width}x{window_height}+{x}+{y}")
-
-window.bind('<Left>', lambda event: change_direction('left', 0))
-window.bind('<Right>', lambda event: change_direction('right', 0))
-window.bind('<Up>', lambda event: change_direction('up', 0))
-window.bind('<Down>', lambda event: change_direction('down', 0))
-
-window.bind('<a>', lambda event: change_direction('left', 1))
-window.bind('<d>', lambda event: change_direction('right', 1))
-window.bind('<w>', lambda event: change_direction('up', 1))
-window.bind('<s>', lambda event: change_direction('down', 1))
+# window.bind('<Left>', lambda event: change_direction('left', 0))
+# window.bind('<Right>', lambda event: change_direction('right', 0))
+# window.bind('<Up>', lambda event: change_direction('up', 0))
+# window.bind('<Down>', lambda event: change_direction('down', 0))
 
 if __name__ == '__main__':
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, 'config-feedforward.txt')
     run(config_path)
-    eval_genomes(config_path)
 
 
