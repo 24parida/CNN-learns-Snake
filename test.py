@@ -15,7 +15,7 @@ FOOD_COLOR = "#FF0000"
 BACKGROUND_COLOR = "#000000"
 
 global gen_count
-gen_count = 2
+gen_count = 10
 
 # gen - snake - properties
 global snakes, foods, directions, moves
@@ -82,14 +82,12 @@ def next_turns():
         next_turn(i)
         if check_collisions(snakes[i]) or moves[i] == 0:
             game_over(i)
-            print("appending pop: " + str(i))
             pops.append(i)
-            print("pops b4: " + str(pops))
         else:
             state_of_game(i)
 
-    print("pops: " + str(pops))
     if len(pops) != 0:
+        pops.sort(reverse = True)
         for pop in pops:
             snakes.pop(pop)
             foods.pop(pop)
