@@ -7,7 +7,7 @@ import random
 
 GAME_WIDTH = 700
 GAME_HEIGHT = 700
-SPEED = 1000
+SPEED = 200
 SPACE_SIZE = 140
 BODY_PARTS = 3
 SNAKE_COLOR = "#00FF00"
@@ -15,16 +15,14 @@ FOOD_COLOR = "#FF0000"
 BACKGROUND_COLOR = "#000000"
 
 global gen_count
-gen_count = 1
+gen_count = 2
 
 # gen - snake - properties
-global snakes, foods, directions, lives, moves, scores
+global snakes, foods, directions, moves
 snakes = []
 foods = []
 directions = []
-lives = []
 moves = []
-scores = []
 
 
 def initialize():
@@ -33,9 +31,7 @@ def initialize():
         snakes.append(Snake(i))
         foods.append(Food(i))
         directions.append('down')
-        lives.append(True)
         moves.append(30)
-        scores.append(0)
 
 
 def restart():
@@ -43,17 +39,7 @@ def restart():
         snakes[i] = Snake(i)
         foods[i] = Food(i)
         directions[i] = 'down'
-        lives[i] = True
         moves[i] = 30
-        scores[i] = 0
-    label.config(text="Score:{}".format(scores[0]))
-
-
-def snakes_still_alive():
-    for i in range(gen_count):
-        if lives[i]:
-            return True
-    return False
 
 
 class Snake:
@@ -64,7 +50,7 @@ class Snake:
         self.squares = []
 
         for i in range(0, BODY_PARTS):
-            self.coordinates.append([0, 0])
+            self.coordinates.insert(0, [0, (SPACE_SIZE * i)])
 
         for x, y in self.coordinates:
             square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR, tag="snake" + str(num))
@@ -89,66 +75,69 @@ class Food:
 
 
 def next_turns():
-    for i in range(gen_count):
+    pops = []
+
+    print(len(snakes))
+    for i in range(len(snakes)):
         next_turn(i)
+        if check_collisions(snakes[i]) or moves[i] == 0:
+            game_over(i)
+            print("appending pop: " + str(i))
+            pops.append(i)
+            print("pops b4: " + str(pops))
+        else:
+            state_of_game(i)
+
+    print("pops: " + str(pops))
+    if len(pops) != 0:
+        for pop in pops:
+            snakes.pop(pop)
+            foods.pop(pop)
+            directions.pop(pop)
+            moves.pop(pop)
+
+    window.after(SPEED, next_turns)
+    window.mainloop()
 
 
 def next_turn(num):
-    if moves[num] == 0:
-        lives[num] = False
-        game_over(num)
+    moves[num] -= 1
 
-    if lives[num]:
-        moves[num] -= 1
+    try:
         x, y = snakes[num].coordinates[0]
+    except:
+        print("index: " + str(num))
 
-        if directions[num] == "up":
-            y -= SPACE_SIZE
-        elif directions[num] == "down":
-            y += SPACE_SIZE
-        elif directions[num] == "left":
-            x -= SPACE_SIZE
-        elif directions[num] == "right":
-            x += SPACE_SIZE
+    if directions[num] == "up":
+        y -= SPACE_SIZE
+    elif directions[num] == "down":
+        y += SPACE_SIZE
+    elif directions[num] == "left":
+        x -= SPACE_SIZE
+    elif directions[num] == "right":
+        x += SPACE_SIZE
 
-        snakes[num].coordinates.insert(0, (x, y))
+    snakes[num].coordinates.insert(0, (x, y))
 
-        square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR, tag="snake"+str(num))
-        snakes[num].squares.insert(0, square)
+    square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR, tag="snake"+str(num))
+    snakes[num].squares.insert(0, square)
 
-        found_food = False
-        for a, b in snakes[num].coordinates:
-            if a == foods[num].coordinates[0] and b == foods[num].coordinates[1]:
+    found_food = False
+    for a, b in snakes[num].coordinates:
+        if a == foods[num].coordinates[0] and b == foods[num].coordinates[1]:
 
-                found_food = True
-                scores[num] += 1
-                moves[num] += 20
+            found_food = True
+            moves[num] += 20
 
-                label.config(text="Score:{}".format(scores[0]))
+            canvas.delete("food"+str(num))
+            foods[num] = Food(num)
 
-                canvas.delete("food"+str(num))
-                foods[num] = Food(num)
+    if not found_food:
+        del snakes[num].coordinates[-1]
 
-        if not found_food:
-            del snakes[num].coordinates[-1]
+        canvas.delete(snakes[num].squares[-1])
 
-            canvas.delete(snakes[num].squares[-1])
-
-            del snakes[num].squares[-1]
-
-        # AI BRAIN
-
-        if check_collisions(snakes[num]):
-            game_over(num)
-        else:
-            state_of_game()
-
-        window.after(SPEED, next_turn, num)
-    elif not snakes_still_alive():
-        print("restarting")
-        restart()
-        for i in range(gen_count):
-            window.after(SPEED, next_turn, i)
+        del snakes[num].squares[-1]
 
 
 def change_direction(new_direction, num):
@@ -176,14 +165,14 @@ def check_collisions(snake):
 
     for body_part in snake.coordinates[1:]:
         if x == body_part[0] and y == body_part[1]:
-            print('hitting body working')
+            print("body part x: " + str(body_part[0]) + " body part y: " + str(body_part[1]))
+            print("x: " + str(x) + " y: " + str(y))
             return True
 
     return False
 
 
 def game_over(num):
-    lives[num] = False
     snakes[num].restart()
     foods[num].restart()
     canvas.delete("snake"+str(num))
@@ -225,17 +214,16 @@ def state_of_game(num):
     return p1a
 
 
+def main():
+    next_turns()
+
+
 window = Tk()
 window.title("Snake game")
 window.resizable(False, False)
 
 canvas = Canvas(window, bg=BACKGROUND_COLOR, height=GAME_HEIGHT, width=GAME_WIDTH)
 canvas.pack()
-
-initialize()
-
-label = Label(window, text="Score:{}".format(scores[0]), font=('consolas', 40))
-label.pack()
 window.update()
 
 window_width = window.winfo_width()
@@ -253,5 +241,6 @@ window.bind('<Right>', lambda event: change_direction('right', 0))
 window.bind('<Up>', lambda event: change_direction('up', 0))
 window.bind('<Down>', lambda event: change_direction('down', 0))
 
-next_turns()
-window.mainloop()
+if __name__ == '__main__':
+    initialize()
+    main()
