@@ -20,7 +20,7 @@ Essentially you define a pre-existing input and output layer, and it randomly 'a
 
 # End result
 
-Fitness of ~200, or 40 apples.
+Fitness of 105, or 20 apples.
 
 # Opportunities to expand
 
