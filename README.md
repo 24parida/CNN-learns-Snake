@@ -12,7 +12,7 @@ After this we have to implement: initialize funciton to make x amount of snakes,
 # NEAT
 NEAT stands for Neuro-Evolution of Augmenting Topoligies, which was researched in this paper by Dr. Stanley, from MIT - https://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf
 
-Essentially you define a pre-existing input and output layer, and it randomly 'augments the topology' or in simpler terms - changes the structure of the neural network by adding random neurons in hiden layers, and uses a genetic algorithm to find the winners of each generation until it converges on the best solution.
+Essentially you define a pre-existing input and output layer, and it randomly 'augments the topology' or in simpler terms - changes the structure of the neural network by adding random neurons in hidden layers, and uses a genetic algorithm to find the winners of each generation until it converges on the best solution.
    
 # Visualizaton
  
