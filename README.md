@@ -15,6 +15,8 @@ NEAT stands for Neuro-Evolution of Augmenting Topoligies, which was researched i
 Essentially you define a pre-existing input and output layer, and it randomly 'augments the topology' or in simpler terms - changes the structure of the neural network by adding random neurons in hidden layers, and uses a genetic algorithm to find the winners of each generation until it converges on the best solution.
    
 # Visualizaton
+
+ https://user-images.githubusercontent.com/68526448/178406710-df8fd666-9ac7-4f91-b8a6-89c686a8d1a8.mp4 
  
 ![Visualization of neural net](https://github.com/24parida/CNN-learns-Snake/blob/main/net.png?raw=true)
 
